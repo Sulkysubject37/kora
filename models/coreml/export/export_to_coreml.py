@@ -26,7 +26,7 @@ def export_to_coreml(operators: Dict[str, Any], output_path: str, model_name: st
     from coremltools.converters.mil import register_op
     from coremltools.converters.mil.frontend.milproto.load import load as load_mil
     
-    @mb.program(input_specs=[mb.TensorSpec(shape=(n_genes,), name="expression_t")])
+    @mb.program(input_specs=[mb.TensorSpec(shape=(n_genes,))])
     def prog(expression_t):
         # Linear projection: Wx + b
         # weights is (out, in)
