@@ -1,0 +1,25 @@
+# KORA Configuration
+
+project:
+  name: "KORA"
+  version: "0.1.0"
+  
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  synthetic_dir: "data/processed/synthetic"
+  
+api:
+  entrez_email: "kora_agent@example.com"
+  
+training:
+  dt: 1.0
+  stdp:
+    learning_rate: 0.01
+    tau_plus: 20.0
+    tau_minus: 20.0
+    
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "results/logs/kora.log"
