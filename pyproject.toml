@@ -1,0 +1,8 @@
+[project]
+name = "kora"
+version = "0.1.0"
+description = "Kinetic Ordered Regulatory Analysis"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.env
+.venv
+
+# Data
+data/raw/
+data/external/
+
+# Results
+results/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# CoreML
+*.mlmodel
