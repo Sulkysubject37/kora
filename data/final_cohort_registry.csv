@@ -1,0 +1,37 @@
+accession,disease,n_samples,matrix_type,status,source_file
+GSE269316,Parkinsons_Disease,48,Raw Counts,Needs Normalization,Supp: GSE269316_count_matrix_galaxy.txt.gz
+GSE294029,Parkinsons_Disease,27,Raw Counts,Needs Normalization,Supp: GSE294029_Raw_counts.tsv.gz
+GSE287574,Parkinsons_Disease,24,Raw Counts,Needs Normalization,Supp: GSE287574_raw_counts.csv.gz
+GSE75249,Parkinsons_Disease,33,Intensity/Raw,Needs Normalization,SOFT
+GSE290333,Parkinsons_Disease,38,Normalized/Log,Ready (Normalized),SOFT
+GSE295831,Parkinsons_Disease,7,Raw Counts,Needs Normalization,Supp: GSE295831_IPSCdopamin_Syn_raw.txt.gz
+GSE282494,Parkinsons_Disease,8,Raw Counts,Needs Normalization,Supp: GSE282494_feature_counts.txt.gz
+GSE295832,Parkinsons_Disease,26,Counts,Needs Normalization,Supp: GSE295832_IPSC_dopamin_Syn_raw.txt.gz
+GSE268939,Parkinsons_Disease,21,Intensity/Raw,Needs Normalization,Supp: GSE268939_all.genes.expression.annot.txt.gz
+GSE304550,Amyotrophic_Lateral_Sclerosis,18,Counts,Needs Normalization,Supp: GSE304550_MN-samples-counts-processed.txt.gz
+GSE309506,Amyotrophic_Lateral_Sclerosis,20,Raw Counts,Needs Normalization,Supp: GSE309506_Riluzole_treatment_raw_counts.txt.gz
+GSE301585,Amyotrophic_Lateral_Sclerosis,2543,Normalized/Log,Ready (Normalized),Supp: GSE301585_MAID_samples_EP_cells_normalized_matrix.csv.gz
+GSE284339,Amyotrophic_Lateral_Sclerosis,26,Counts,Needs Normalization,Supp: GSE284339_C9vsHC_oMG_featureCounts.txt.gz
+GSE304548,Amyotrophic_Lateral_Sclerosis,8,Counts,Needs Normalization,Supp: GSE304548_iPSC-read-counts-processed.txt.gz
+GSE252892,Amyotrophic_Lateral_Sclerosis,7,Counts,Needs Normalization,Supp: GSE252892_D7-scr-vs-kd-gene-normalized-counts.csv.gz
+GSE307054,Amyotrophic_Lateral_Sclerosis,22,Raw Counts,Needs Normalization,Supp: GSE307054_counts.csv.gz
+GSE79557,Frontotemporal_Dementia,30,Normalized/Log,Ready (Normalized),SOFT
+GSE230520,Frontotemporal_Dementia,18,Normalized/Log,Ready (Normalized),SOFT
+GSE158947,Frontotemporal_Dementia,24,Intensity/Raw,Needs Normalization,Supp: GSE158947_SEMatrix_15477onWT.txt.gz
+GSE230447,Frontotemporal_Dementia,18,Normalized/Log,Ready (Normalized),SOFT
+GSE299341,Frontotemporal_Dementia,52,Counts,Needs Normalization,Supp: GSE299341_feature_counts.csv.gz
+GSE230450,Frontotemporal_Dementia,22,Raw Counts,Needs Normalization,Supp: GSE230450_bulk_counts_fin.csv.gz
+GSE215241,Frontotemporal_Dementia,35,Counts,Needs Normalization,Supp: GSE215241_uniquely_mapping-raw_counts.tsv.gz
+GSE62935,Frontotemporal_Dementia,28,Normalized/Log,Ready (Normalized),SOFT
+GSE312139,Alzheimers_Disease,48,Raw Counts,Needs Normalization,Supp: GSE312139_feature_counts_GEO.csv.gz
+GSE294848,Alzheimers_Disease,26,Raw Counts,Needs Normalization,Supp: GSE294848_raw_count_all.csv.gz
+GSE311382,Alzheimers_Disease,16,Counts,Needs Normalization,Supp: GSE311382_RawCounts_iMG_IFNTreated_AllGroups.tsv.gz
+GSE309664,Alzheimers_Disease,39,Counts,Needs Normalization,Supp: GSE309664_counts.txt.gz
+GSE311578,Alzheimers_Disease,63,Normalized/Log,Ready (Normalized),Supp: GSE311578_normalized_beta_values.csv.gz
+GSE309036,Alzheimers_Disease,19,Raw Counts,Needs Normalization,Supp: GSE309036_counts_all_mature.tsv.gz
+GSE313307,Alzheimers_Disease,202,Normalized/Log,Ready (Normalized),Supp: GSE313307_normalised_all_samples.csv.gz
+GSE305625,Alzheimers_Disease,326,Intensity/Raw,Needs Normalization,Supp: GSE305625_normalized_data.txt.gz
+GSE232647,Huntingtons_Disease,6,Raw Counts,Needs Normalization,Supp: GSE232647_counts_cerulenin.csv.gz
+GSE273501,Huntingtons_Disease,19,Counts,Needs Normalization,Supp: GSE273501_1.RawCounts_Subfractions.txt.gz
+GSE217469,Huntingtons_Disease,26,Raw Counts,Needs Normalization,Supp: GSE217469_gene_counts_matrix.tsv.gz
+GSE284798,Huntingtons_Disease,16,Raw Counts,Needs Normalization,Supp: GSE284798_CHDI_Cortical_Counts_Merged.csv.gz
