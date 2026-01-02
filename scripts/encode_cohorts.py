@@ -18,7 +18,16 @@ def encode_cohort(accession):
         logger.info(f"Skipping {accession}: Blacklisted (spike encoding issue).")
         return
 
-    input_path = Path(f"data/processed/{accession}/expression.csv")
+    processed_dir = Path(f"data/processed/{accession}")
+    input_path = processed_dir / "expression_log_normalized.csv"
+    
+    if not input_path.exists():
+        # Fallback to expression.csv if normalized doesn't exist (shouldn't happen if normalized correctly)
+        input_path = processed_dir / "expression.csv"
+        if not input_path.exists():
+            logger.warning(f"Skipping {accession}: No data found.")
+            return
+
     output_dir = Path(f"data/spikes/{accession}")
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / "spikes.pkl"
@@ -75,7 +84,7 @@ def encode_cohort(accession):
         logger.error(f"Failed to encode {accession}: {e}")
 
 def main():
-    registry_path = "data/final_cohort_registry.csv"
+    registry_path = "data/cohort_index.csv"
     if not os.path.exists(registry_path):
         return
         

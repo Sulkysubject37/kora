@@ -13,7 +13,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 def harmonize_dataset(accession, disease):
-    processed_dir = Path(f"data/processed/{accession}")
+    disease_safe = disease.replace(" ", "_")
+    processed_dir = Path(f"data/processed/{disease_safe}/{accession}")
+    if not processed_dir.exists():
+        # Fallback to flat structure if not found (backward compatibility or partial migration)
+        flat_dir = Path(f"data/processed/{accession}")
+        if flat_dir.exists():
+            processed_dir = flat_dir
+    
     input_path = processed_dir / "expression.csv"
     output_path = processed_dir / "expression_genes.csv"
     

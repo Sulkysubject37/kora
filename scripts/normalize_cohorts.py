@@ -16,8 +16,17 @@ def normalize_cpm(df):
     cpm = df.div(library_sizes, axis=0) * 1e6
     return cpm
 
-def process_cohort(accession):
-    processed_dir = Path(f"data/processed/{accession}")
+def process_cohort(accession, disease):
+    disease_safe = disease.replace(" ", "_")
+    processed_dir = Path(f"data/processed/{disease_safe}/{accession}")
+    
+    if not processed_dir.exists():
+        # Fallback
+        processed_dir = Path(f"data/processed/{accession}")
+        if not processed_dir.exists():
+            logger.warning(f"Skipping {accession}: Directory not found.")
+            return
+
     input_path = processed_dir / "expression_genes.csv"
     output_path = processed_dir / "expression_log_normalized.csv"
     
@@ -75,14 +84,13 @@ def process_cohort(accession):
     logger.info(f"Saved {accession} normalized matrix. Method: {method}")
 
 def main():
-    # Iterate over all directories in data/processed
-    processed_root = Path("data/processed")
-    if not processed_root.exists():
+    registry_path = "data/cohort_index.csv"
+    if not os.path.exists(registry_path):
         return
-        
-    for cohort_dir in processed_root.iterdir():
-        if cohort_dir.is_dir():
-            process_cohort(cohort_dir.name)
+    
+    df = pd.read_csv(registry_path)
+    for _, row in df.iterrows():
+        process_cohort(row["accession"], row["disease"])
 
 if __name__ == "__main__":
     main()
