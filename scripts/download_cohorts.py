@@ -65,9 +65,15 @@ def download_supp_files(gse, dest_dir: Path):
     
     for url in supp_files:
         filename = url.split("/")[-1]
+        # Skip raw sequencing reads explicitly
         if "fastq" in filename.lower() or "sra" in filename.lower() or "bam" in filename.lower():
             continue
             
+        # Skip TAR archives (usually raw data)
+        if filename.endswith(".tar") or filename.endswith(".tar.gz"):
+            continue
+            
+        # Check usefulness
         is_useful = any(re.search(p, filename, re.IGNORECASE) for p in useful_patterns)
         if not is_useful and filename.endswith((".txt.gz", ".csv.gz", ".tsv.gz", ".xlsx", ".txt", ".csv", ".tsv")):
              is_useful = True
@@ -142,6 +148,10 @@ def main():
     grouped = df_geo.groupby("disease_term")
     
     for disease, group in grouped:
+        if any(term in disease for term in ["Alzheimer", "Amyotrophic", "Frontotemporal", "Huntington", "Parkinson"]):
+            logger.info(f"Skipping {disease} as requested.")
+            continue
+            
         safe_disease = sanitize_dirname(disease)
         logger.info(f"=== {disease} ===")
         
