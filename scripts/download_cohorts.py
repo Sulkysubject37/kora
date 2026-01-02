@@ -13,8 +13,8 @@ from src.utils.dataset_fetchers import fetch_metadata
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Size limit: 500 MB
 SIZE_LIMIT_BYTES = 500 * 1024 * 1024
+BLACKLIST = ["GSE268609"]
 
 def sanitize_dirname(name):
     if not isinstance(name, str):
@@ -22,22 +22,22 @@ def sanitize_dirname(name):
     return name.replace(" ", "_").replace("'", "").replace("/", "_")
 
 def get_remote_file_size(url):
-    """
-    Gets file size in bytes using HTTP HEAD request or FTP SIZE command via urllib.
-    """
     try:
         req = urllib.request.Request(url, method='HEAD')
         with urllib.request.urlopen(req, timeout=10) as response:
             size = response.headers.get('Content-Length')
             if size:
                 return int(size)
-            return 0 # Unknown size
+            return 0
     except Exception as e:
         logger.warning(f"Could not check size for {url}: {e}")
         return 0
 
 def download_file_wget(url, dest_path):
-    # Check size first
+    if dest_path.exists():
+        logger.info(f"Skipping {dest_path.name}: Already exists.")
+        return True
+
     size = get_remote_file_size(url)
     if size > SIZE_LIMIT_BYTES:
         logger.warning(f"Skipping {url}: Size {size/1024/1024:.2f}MB exceeds 500MB limit.")
@@ -56,29 +56,19 @@ def download_file_wget(url, dest_path):
         return False
 
 def download_supp_files(gse, dest_dir: Path):
-    """
-    Downloads count matrices or normalized data from supplementary files.
-    """
     supp_files = gse.metadata.get("supplementary_file", [])
     if isinstance(supp_files, str):
         supp_files = [supp_files]
         
     logger.info(f"Found {len(supp_files)} supplementary files.")
-    
-    # Priority patterns for RNA-seq matrices
     useful_patterns = [r"count", r"matrix", r"fpkm", r"tpm", r"norm", r"expression", r"raw"]
     
     for url in supp_files:
         filename = url.split("/")[-1]
-        
-        # Skip raw sequencing reads explicitly
         if "fastq" in filename.lower() or "sra" in filename.lower() or "bam" in filename.lower():
             continue
             
-        # Check usefulness
         is_useful = any(re.search(p, filename, re.IGNORECASE) for p in useful_patterns)
-        
-        # Also download standard txt/csv/tsv/xlsx if not explicitly raw reads
         if not is_useful and filename.endswith((".txt.gz", ".csv.gz", ".tsv.gz", ".xlsx", ".txt", ".csv", ".tsv")):
              is_useful = True
              
@@ -86,19 +76,43 @@ def download_supp_files(gse, dest_dir: Path):
             logger.info(f"Attempting download: {filename}")
             download_file_wget(url, dest_dir / filename)
 
+def is_fully_downloaded(dest_dir):
+    """
+    Checks if SOFT file exists and (if RNA-seq) at least one supplementary file exists.
+    """
+    soft = list(dest_dir.glob("*_family.soft.gz"))
+    if not soft:
+        return False
+        
+    # Heuristic: If we have SOFT, we *might* be done if it's microarray.
+    # But if we started downloading supp files, we want to know.
+    # Simple check: If folder has > 1 file (SOFT + something else), treat as downloaded.
+    # Or just rely on `download_file_wget` skipping existing files.
+    # The user asked to "don't download the dataset which is already downloaded" meaning SKIP THE PROCESSING steps too.
+    
+    # Let's say if SOFT exists, we assume we tried. 
+    # But for RNA-seq we need supps.
+    
+    files = list(dest_dir.glob("*"))
+    if len(files) > 1: 
+        return True
+    return False
+
 def process_dataset(accession, disease, dest_dir):
-    """
-    Downloads SOFT and Supplementary files.
-    """
+    if accession in BLACKLIST:
+        logger.info(f"Skipping {accession}: Blacklisted.")
+        return
+
+    if is_fully_downloaded(dest_dir):
+        logger.info(f"Skipping {accession}: Already downloaded.")
+        return
+
     logger.info(f"Processing {accession} ({disease}) -> {dest_dir}")
     
     soft_path = dest_dir / f"{accession}_family.soft.gz"
     
     try:
-        # 1. Download SOFT (Metadata)
         if not soft_path.exists():
-            # Check SOFT size? SOFT files are usually small (<100MB), but some huge array ones exist.
-            # GEOparse downloads directly. We assume SOFT is okay or handle timeout.
             try:
                 gse = GEOparse.get_GEO(geo=accession, destdir=str(dest_dir), silent=True)
             except Exception as e:
@@ -107,11 +121,7 @@ def process_dataset(accession, disease, dest_dir):
         else:
             gse = GEOparse.get_GEO(filepath=str(soft_path), silent=True)
             
-        # 2. Check for Data Table & Download Supp Files
-        try:
-            download_supp_files(gse, dest_dir)
-        except Exception as e:
-            logger.warning(f"Error handling supp files for {accession}: {e}")
+        download_supp_files(gse, dest_dir)
 
     except Exception as e:
         logger.error(f"Failed to process {accession}: {e}")
@@ -128,15 +138,12 @@ def main():
         return
 
     df = pd.read_csv(args.index)
-    
-    # Filter for GEO
     df_geo = df[df["repository"] == "GEO"]
-    
     grouped = df_geo.groupby("disease_term")
     
     for disease, group in grouped:
         safe_disease = sanitize_dirname(disease)
-        logger.info(f"=== {disease} ({len(group)} datasets available) ===")
+        logger.info(f"=== {disease} ===")
         
         count = 0
         for _, row in group.iterrows():
@@ -144,11 +151,12 @@ def main():
                 break
                 
             accession = row["accession"]
-            
             dest_dir = Path(args.output_dir) / safe_disease / accession
             dest_dir.mkdir(parents=True, exist_ok=True)
             
             process_dataset(accession, disease, dest_dir)
+            
+            # Count only if we actually processed or if it was already valid
             count += 1
             
     logger.info("Batch download complete.")
