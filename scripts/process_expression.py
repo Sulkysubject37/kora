@@ -6,15 +6,14 @@ from pathlib import Path
 import os
 import glob
 from sklearn.preprocessing import MinMaxScaler
-import shutil
 import gc
 import sys
+import gzip
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Memory safety limit (approximate file size in bytes)
-# 500MB compressed might expand to 5-10GB in memory dataframe
+# 500MB safety
 FILE_SIZE_LIMIT_BYTES = 500 * 1024 * 1024 
 
 def load_dataset_index(index_path="data/dataset_index.csv"):
@@ -23,121 +22,142 @@ def load_dataset_index(index_path="data/dataset_index.csv"):
     try:
         df = pd.read_csv(index_path)
         return dict(zip(df["accession"], df["disease_term"]))
-    except Exception as e:
-        logger.error(f"Failed to load index: {e}")
+    except Exception:
         return {}
 
 def sanitize_dirname(name):
-    if not isinstance(name, str):
-        return "Uncategorized"
+    if not isinstance(name, str): return "Uncategorized"
     return name.replace(" ", "_").replace("'", "").replace("/", "_")
 
-def process_geo_soft(soft_path: Path, output_dir: Path):
+def normalize_dataframe(df):
     """
-    Parses SOFT file, extracts expression matrix, normalizes.
+    Standardizes a gene expression dataframe (samples x genes).
     """
-    logger.info(f"Processing {soft_path}...")
+    # Ensure numeric
+    df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
     
-    # Check file size
-    try:
-        size = soft_path.stat().st_size
-        if size > FILE_SIZE_LIMIT_BYTES:
-            logger.warning(f"Skipping {soft_path.name}: File size {size/1024/1024:.2f}MB exceeds limit.")
-            return
-    except Exception as e:
-        logger.warning(f"Could not check file size: {e}")
-
-    gse = None
-    df = None
+    # 1. Log2 if max > 50
+    if df.max().max() > 50:
+        logger.info("Applying log2(x+1).")
+        df = np.log2(df + 1)
+        
+    # 2. MinMax Scaling to [0, 1]
+    scaler = MinMaxScaler()
+    scaled = scaler.fit_transform(df) # Scaler works on columns. We want to scale each gene (col) or sample (row)?
+    # Usually: normalize expression of a gene across samples [0,1] or normalize sample to [0,1]?
+    # KORA SNN spike encoding usually wants input in [0, 1].
+    # SpikeEncoder takes (Time/Samples, Genes).
+    # We want each gene's expression to drive firing rate.
+    # So we scale each GENE column to [0, 1].
     
-    try:
-        # Load with minimal metadata if possible, but GEOparse loads all.
-        gse = GEOparse.get_GEO(filepath=str(soft_path), silent=True)
-        
-        # Pivot samples
-        # This is the memory intensive part
-        df = gse.pivot_samples("VALUE")
-        
-        if df.empty:
-            logger.warning(f"No data found in {soft_path}")
-            return
+    df_scaled = pd.DataFrame(scaled, index=df.index, columns=df.columns)
+    return df_scaled
 
-        # Check for NaNs and clean
-        df = df.dropna()
+def process_supp_file(file_path):
+    """
+    Tries to parse a supplementary file into a DataFrame.
+    """
+    logger.info(f"Parsing supplementary: {file_path.name}")
+    
+    # Detect delimiter
+    if "csv" in file_path.name.lower():
+        sep = ","
+    else:
+        sep = "\t" # default
         
-        # Normalization
-        # 1. Log2 if not logged (Heuristic: max > 50)
-        if df.max().max() > 50:
-            logger.info("Data appears unlogged. Applying log2(x+1).")
-            df = np.log2(df + 1)
+    try:
+        if file_path.suffix == ".gz":
+            with gzip.open(file_path, 'rt') as f:
+                df = pd.read_csv(f, sep=sep, index_col=0)
+        elif file_path.suffix == ".tar":
+            logger.warning("Skipping tar archive (needs extraction).")
+            return None
+        elif file_path.suffix == ".xlsx":
+            df = pd.read_excel(file_path, index_col=0)
+        else:
+            df = pd.read_csv(file_path, sep=sep, index_col=0)
             
-        # 2. MinMax Scaling to [0, 1]
-        scaler = MinMaxScaler()
-        
-        # Transpose to Samples x Genes for scaler
-        df_T = df.T 
-        scaled_data = scaler.fit_transform(df_T)
-        df_scaled = pd.DataFrame(scaled_data, index=df_T.index, columns=df_T.columns)
-        
-        # Save
-        output_path = output_dir / "expression.csv"
-        df_scaled.to_csv(output_path)
-        logger.info(f"Saved processed data to {output_path}")
-        
+        # Orient: Samples (rows) x Genes (cols)
+        # Heuristic: Genes > Samples usually.
+        if df.shape[0] > df.shape[1]:
+            df = df.T
+            
+        return df
     except Exception as e:
-        logger.error(f"Error processing {soft_path}: {e}")
+        logger.warning(f"Failed to parse {file_path}: {e}")
+        return None
+
+def process_directory(accession, input_dir, output_dir):
+    try:
+        # 1. Check SOFT
+        soft_files = list(input_dir.glob("*_family.soft.gz"))
+        df = None
         
+        if soft_files:
+            try:
+                gse = GEOparse.get_GEO(filepath=str(soft_files[0]), silent=True)
+                df = gse.pivot_samples("VALUE")
+                if df.empty:
+                    df = None
+                else:
+                    df = df.T # Samples x Genes
+            except Exception as e:
+                logger.warning(f"SOFT parse failed for {accession}: {e}")
+        
+        # 2. If no SOFT table, look for supplementary
+        if df is None or df.empty:
+            supp_files = [f for f in input_dir.iterdir() if f.name != soft_files[0].name and not f.name.startswith("metadata")]
+            # Filter for likely matrix files
+            matrices = [f for f in supp_files if "count" in f.name.lower() or "matrix" in f.name.lower() or "norm" in f.name.lower() or "fpkm" in f.name.lower() or "tpm" in f.name.lower()]
+            
+            if matrices:
+                # Pick largest or first?
+                # Sometimes multiple files (one per sample). We need robust merging.
+                # For now, pick the first single matrix file.
+                target = matrices[0]
+                df = process_supp_file(target)
+                
+        if df is not None and not df.empty:
+            df_norm = normalize_dataframe(df)
+            
+            out_path = output_dir / "expression.csv"
+            df_norm.to_csv(out_path)
+            logger.info(f"Saved {accession} expression.csv ({df_norm.shape})")
+        else:
+            logger.warning(f"No usable data found for {accession}")
+
+    except Exception as e:
+        logger.error(f"Crash processing {accession}: {e}")
     finally:
-        # Aggressive cleanup
-        del gse
-        del df
         gc.collect()
 
 def main():
-    raw_dir = Path("data/raw")
+    raw_dir = Path("data/raw/GEO")
     processed_dir = Path("data/processed")
     
-    disease_map = load_dataset_index()
-    
-    # GEO
-    geo_dir = raw_dir / "GEO"
-    if geo_dir.exists():
-        # Iterate over accessions
-        accession_dirs = [d for d in geo_dir.iterdir() if d.is_dir()]
-        logger.info(f"Found {len(accession_dirs)} directories in {geo_dir}")
+    if not raw_dir.exists():
+        logger.error("No raw data found.")
+        return
+
+    # Iterate Disease dirs
+    for disease_dir in raw_dir.iterdir():
+        if not disease_dir.is_dir(): continue
         
-        for accession_dir in accession_dirs:
+        disease_name = disease_dir.name
+        logger.info(f"Processing disease group: {disease_name}")
+        
+        for accession_dir in disease_dir.iterdir():
+            if not accession_dir.is_dir(): continue
+            
             accession = accession_dir.name
+            out_dir = processed_dir / disease_name / accession
             
-            # Determine target subdirectory
-            disease_term = disease_map.get(accession, "Uncategorized")
-            safe_disease_dir = sanitize_dirname(disease_term)
-            
-            # Check if output already exists to skip
-            out_dir = processed_dir / safe_disease_dir / accession
             if (out_dir / "expression.csv").exists():
                 logger.info(f"Skipping {accession}: Already processed.")
                 continue
-            
-            out_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Look for SOFT file
-            soft_files = list(accession_dir.glob("*_family.soft.gz"))
-            if not soft_files:
-                soft_files = list(accession_dir.glob("*.soft"))
                 
-            if soft_files:
-                try:
-                    process_geo_soft(soft_files[0], out_dir)
-                except KeyboardInterrupt:
-                    logger.error("Interrupted by user.")
-                    sys.exit(1)
-                except Exception as e:
-                    logger.error(f"Unexpected crash processing {accession}: {e}")
-            else:
-                logger.debug(f"No SOFT file in {accession}")
-    
-    logger.info("Processing complete.")
+            out_dir.mkdir(parents=True, exist_ok=True)
+            process_directory(accession, accession_dir, out_dir)
 
 if __name__ == "__main__":
     main()
