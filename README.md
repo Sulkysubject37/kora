@@ -28,7 +28,7 @@ The pipeline spans data acquisition and preprocessing, spike encoding, SNN train
 
 ## Project Status
 
-**Version:** `v0.1-kora-bulk-swift` (Frozen for initial paper draft / release candidate)
+**Version:** `v1.0.1` (Frozen for initial paper draft / release candidate)
 
 All core pipeline components are implemented, tested, and documented. The system is capable of processing neurodegenerative cohorts, inferring GRNs, and performing high-speed inference.
 
