@@ -11,7 +11,7 @@ guard args.count >= 3 else {
 
 let modelPath = args[1]
 let nGenes = Int(args[2]) ?? 5000
-let batchSize = args.count > 3 ? Int(args[3]) : 100
+let batchSize = args.count > 3 ? (Int(args[3]) ?? 100) : 100
 
 print("Loading model from \(modelPath)...")
 let url = URL(fileURLWithPath: modelPath)
