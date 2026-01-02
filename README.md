@@ -36,7 +36,7 @@ All core pipeline components are implemented, tested, and documented. The system
 
 1.  **Clone the Repository**:
     ```bash
-    git clone https://github.com/your-repo/kora.git
+    git clone https://github.com/Sulkysubject37/kora.git
     cd kora
     ```
 2.  **Setup Environment**:
@@ -55,3 +55,8 @@ Each major directory (`configs/`, `data/`, `docs/`, `models/`, `results/`, `scri
 ## License
 
 This project is licensed under the MIT License.
+
+## Citation
+
+If you use this project in your research, please cite:
+MD.Arshad
