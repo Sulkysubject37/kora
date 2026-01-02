@@ -8,6 +8,10 @@ import os
 import gc
 import json
 import yaml
+
+# Ensure src is importable
+sys.path.append(os.path.abspath("."))
+
 from src.snn.simulation import Trainer
 from src.stdp.generalized_stdp import CausalSTDP
 
@@ -23,13 +27,32 @@ def load_config():
             return yaml.safe_load(f)
     return {}
 
-def train_cohort(accession, config):
+def train_cohort(accession, disease, config):
     if accession == "GSE301585" or accession == "GSE311578":
         logger.info(f"Skipping {accession}: Blacklisted (Too large/missing spikes).")
         return
 
-    input_csv = Path(f"data/processed/{accession}/expression.csv")
+    # Path finding
+    processed_root = Path("data/processed")
+    disease_safe = disease.replace(" ", "_")
+    processed_dir = processed_root / disease_safe / accession
+    
+    if not processed_dir.exists():
+        processed_dir = processed_root / accession
+        if not processed_dir.exists():
+            logger.warning(f"Skipping {accession}: Data directory not found.")
+            return
+
+    input_csv = processed_dir / "expression_log_normalized.csv"
+    if not input_csv.exists():
+        input_csv = processed_dir / "expression.csv" # Fallback
+        
     spike_path = Path(f"data/spikes/{accession}/spikes.pkl")
+    
+    if not spike_path.exists():
+        logger.warning(f"Skipping {accession}: No spikes found.")
+        return
+
     res_dir = Path(f"results/{accession}")
     
     weights_dir = res_dir / "weights"
@@ -119,15 +142,14 @@ def train_cohort(accession, config):
 
 def main():
     config = load_config()
-    registry_path = "data/final_cohort_registry.csv"
+    registry_path = "data/cohort_index.csv"
     if not os.path.exists(registry_path):
         return
         
     df = pd.read_csv(registry_path)
-    accessions = df["accession"].tolist()
     
-    for acc in accessions:
-        train_cohort(acc, config)
+    for _, row in df.iterrows():
+        train_cohort(row["accession"], row["disease"], config)
 
 if __name__ == "__main__":
     main()
