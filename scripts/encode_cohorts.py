@@ -13,12 +13,23 @@ from src.encoding.spike_encoding import SpikeEncoder
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def encode_cohort(accession):
+def encode_cohort(accession, disease):
     if accession == "GSE311578":
         logger.info(f"Skipping {accession}: Blacklisted (spike encoding issue).")
         return
 
-    processed_dir = Path(f"data/processed/{accession}")
+    processed_root = Path("data/processed")
+    # Try nested structure first
+    disease_safe = disease.replace(" ", "_")
+    processed_dir = processed_root / disease_safe / accession
+    
+    if not processed_dir.exists():
+        # Fallback to flat structure
+        processed_dir = processed_root / accession
+        if not processed_dir.exists():
+            logger.warning(f"Skipping {accession}: Directory not found in {disease_safe} or root.")
+            return
+
     input_path = processed_dir / "expression_log_normalized.csv"
     
     if not input_path.exists():
@@ -90,7 +101,7 @@ def main():
         
     df = pd.read_csv(registry_path)
     for _, row in df.iterrows():
-        encode_cohort(row["accession"])
+        encode_cohort(row["accession"], row["disease"])
 
 if __name__ == "__main__":
     main()
