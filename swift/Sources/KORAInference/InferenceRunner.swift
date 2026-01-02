@@ -10,6 +10,14 @@ public class InferenceRunner {
         self.model = model
     }
     
+    public static func load(at path: URL, computeUnit: MLComputeUnits) throws -> InferenceRunner {
+        let config = MLModelConfiguration()
+        config.computeUnits = computeUnit
+        let compiledUrl = try MLModel.compileModel(at: path)
+        let model = try MLModel(contentsOf: compiledUrl, configuration: config)
+        return InferenceRunner(model: model)
+    }
+    
     public func predict(input: [Float]) throws -> [Float] {
         // Convert [Float] to MLMultiArray
         let count = input.count

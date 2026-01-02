@@ -17,25 +17,26 @@ print("Loading model from \(modelPath)...")
 let url = URL(fileURLWithPath: modelPath)
 
 do {
-    let model = try ModelLoader.loadModel(at: url)
-    print("Model loaded. Description: \(model.modelDescription.metadata[MLModelMetadataKey.description] ?? "")")
+    // 1. CPU Benchmark
+    print("\n--- CPU Only ---")
+    let cpuRunner = try InferenceRunner.load(at: url, computeUnit: .cpuOnly)
+    let cpuTime = BatchExecutor.benchmark(runner: cpuRunner, nGenes: nGenes, batchSize: batchSize)
+    print("Time: \(String(format: "%.4f", cpuTime))s")
+    print("Throughput: \(String(format: "%.2f", Double(batchSize) / cpuTime)) samples/s")
     
-    // Check Compute Unit
-    let config = MLModelConfiguration()
-    // By default it uses all. We can force CPU later for benchmarks.
+    // 2. NPU/All Benchmark
+    print("\n--- NPU/All ---")
+    let npuRunner = try InferenceRunner.load(at: url, computeUnit: .all)
+    let npuTime = BatchExecutor.benchmark(runner: npuRunner, nGenes: nGenes, batchSize: batchSize)
+    print("Time: \(String(format: "%.4f", npuTime))s")
+    print("Throughput: \(String(format: "%.2f", Double(batchSize) / npuTime)) samples/s")
     
-    let runner = InferenceRunner(model: model)
-    
-    print("Running benchmark (Batch size: \(batchSize), Genes: \(nGenes))...")
-    let duration = BatchExecutor.benchmark(runner: runner, nGenes: nGenes, batchSize: batchSize ?? 100)
-    
-    print("Done.")
-    print("Total time: \(String(format: "%.4f", duration))s")
-    print("Throughput: \(String(format: "%.2f", Double(batchSize ?? 100) / duration)) samples/s")
-    
-    // Save minimal result
-    let result = ["throughput": Double(batchSize ?? 100) / duration, "latency": duration / Double(batchSize ?? 100)]
-    // ... writer implementation later
+    // CSV Output
+    let csv = "device,time,throughput\ncpu,\(cpuTime),\(Double(batchSize)/cpuTime)\nnpu,\(npuTime),\(Double(batchSize)/npuTime)"
+    let outputPath = "results/benchmarks/benchmark_\(nGenes).csv"
+    // Write to file (simple shell redirect or file manager)
+    // For now just print to stdout for capture
+    print("\nCSV_RESULT:\n\(csv)")
     
 } catch {
     print("Error: \(error)")
