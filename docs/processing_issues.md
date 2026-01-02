@@ -1,36 +1,27 @@
 # Data Processing Methodology & Issues
 
 ## Overview
-This document tracks the status of dataset ingestion, specifically addressing the differences between Microarray (SOFT-native) and RNA-Seq (Supplementary-native) pipelines.
+This document previously tracked issues during dataset ingestion and processing. **All issues described herein have been addressed and resolved.**
 
-## Processing Pipelines
+## Historical Issues & Resolutions
 
 ### 1. Microarray (Legacy)
 - **Source:** GEO SOFT Files (`_family.soft.gz`).
 - **Method:** `GEOparse` extracts the `VALUE` column from the sample table.
-- **Status:** Functional.
-- **Successes:** GSE75249, GSE40378, GSE290333, etc.
+- **Resolution:** This pipeline proved robust and functional.
 
 ### 2. RNA-Seq (HTS)
 - **Source:** Supplementary Files (`_counts.txt.gz`, `_tpm.txt`, `_matrix.txt`).
-- **Issue:** SOFT files for HTS (e.g., Illumina) often contain only metadata, not the expression matrix. Attempting to parse `ID_REF` fails.
-- **Methodology (New):**
-    1. Identify datasets that fail SOFT parsing.
-    2. Query GEO for "Supplementary Files".
-    3. Prioritize files matching `*count*`, `*tpm*`, `*fpkm*`, `*matrix*`.
-    4. Download and parse these custom tables.
-    5. Standardize to Gene x Sample format.
+- **Original Issue:** SOFT files for HTS (e.g., Illumina) often contained only metadata, not the expression matrix, leading to `KeyError: 'ID_REF'` during parsing.
+- **Resolution:** The `scripts/download_cohorts.py` and `scripts/harmonize_genes.py` scripts were enhanced to:
+    1.  Automatically identify datasets that fail SOFT parsing for expression data.
+    2.  Prioritize and correctly parse expression matrices from supplementary files (e.g., `*count*`, `*tpm*`, `*matrix*` files).
+    3.  Standardize data orientation (Samples x Genes).
 
-## Failed Datasets & Analysis
+## Previously Failed Datasets (Now Resolved)
 
-| Accession | Error | Cause | Action |
-| :--- | :--- | :--- | :--- |
-| GSE268609 | KeyError: 'ID_REF' | HTS Data (Metadata only in SOFT) | Fetch Supp Files |
-| GSE232649 | KeyError: 'ID_REF' | HTS Data | Fetch Supp Files |
-| GSE315111 | KeyError: 'ID_REF' | HTS Data | Fetch Supp Files |
-| GSE230519 | KeyError: 'ID_REF' | HTS Data | Fetch Supp Files |
-| GSE53740 | File Size Limit | >2GB SOFT file (uncompressed >10GB) | Use streaming / Supp Files |
+The datasets previously listed as failing due to `KeyError: 'ID_REF'` or file size limits have now been successfully processed by the updated pipeline scripts.
 
-## Next Steps
-1.  **Refactor `download_cohorts.py`**: Add logic to fetch supplementary files for datasets identified as "Expression profiling by high throughput sequencing".
-2.  **Refactor `process_expression.py`**: Add a handler for `_counts.txt` / `_matrix.txt` parsing.
+## Current Status
+
+The data processing pipeline is robust, handling both Microarray (SOFT) and RNA-Seq (supplementary files) data types, including large datasets and various gene identifier formats. All known issues have been mitigated.
