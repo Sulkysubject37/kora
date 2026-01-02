@@ -1,22 +1,38 @@
-# Python
-__pycache__/
-*.pyc
-.env
-.venv
-
-# Data
-/data/
-!/data/README.md
-
-# Results
-results/
-
-# Notebooks
-.ipynb_checkpoints/
-
-# CoreML
-*.mlmodel
-*.mlpackage
+# KORA Project Root Git Ignore
+# This file specifies intentionally untracked files and directories.
 
 # Environment
-/kora_env/
+kora_env/
+
+# Data directories (large files, specific content)
+data/raw/
+data/processed/
+data/spikes/
+
+# Build artifacts and caches
+.DS_Store
+.build/
+.swiftpm/
+Package.resolved
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Logs and temporary files
+*.log
+*.tmp
+results/
+
+# Specific files to ignore
+GPL23159.txt
+GPL24676.txt
+
+# --- Directories requested to be ignored for cleanup ---
+experiments/
